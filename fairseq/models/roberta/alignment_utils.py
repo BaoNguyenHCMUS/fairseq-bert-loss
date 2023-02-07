@@ -12,12 +12,10 @@ import torch
 def align_bpe_to_words(roberta, bpe_tokens: torch.LongTensor, other_tokens: List[str]):
     """
     Helper to align GPT-2 BPE to other tokenization formats (e.g., spaCy).
-
     Args:
         roberta (RobertaHubInterface): RoBERTa instance
         bpe_tokens (torch.LongTensor): GPT-2 BPE tokens of shape `(T_bpe)`
         other_tokens (List[str]): other tokens of shape `(T_words)`
-
     Returns:
         List[str]: mapping from *other_tokens* to corresponding *bpe_tokens*.
     """
@@ -29,23 +27,25 @@ def align_bpe_to_words(roberta, bpe_tokens: torch.LongTensor, other_tokens: List
 
     # remove whitespaces to simplify alignment
     bpe_tokens = [roberta.task.source_dictionary.string([x]) for x in bpe_tokens]
-    bpe_tokens = [clean(roberta.bpe.decode(x) if x not in {'<s>', ''} else x) for x in bpe_tokens]
+    bpe_tokens = [
+        clean(roberta.bpe.decode(x) if x not in {"<s>", ""} else x) for x in bpe_tokens
+    ]
     other_tokens = [clean(str(o)) for o in other_tokens]
 
     # strip leading <s>
     bpe_tokens = bpe_tokens[1:]
-    assert ''.join(bpe_tokens) == ''.join(other_tokens)
+    assert "".join(bpe_tokens) == "".join(other_tokens)
 
     # create alignment from every word to a list of BPE tokens
     alignment = []
-    bpe_toks = filter(lambda item: item[1] != '', enumerate(bpe_tokens, start=1))
+    bpe_toks = filter(lambda item: item[1] != "", enumerate(bpe_tokens, start=1))
     j, bpe_tok = next(bpe_toks)
     for other_tok in other_tokens:
         bpe_indices = []
         while True:
             if other_tok.startswith(bpe_tok):
                 bpe_indices.append(j)
-                other_tok = other_tok[len(bpe_tok):]
+                other_tok = other_tok[len(bpe_tok) :]
                 try:
                     j, bpe_tok = next(bpe_toks)
                 except StopIteration:
@@ -53,11 +53,11 @@ def align_bpe_to_words(roberta, bpe_tokens: torch.LongTensor, other_tokens: List
             elif bpe_tok.startswith(other_tok):
                 # other_tok spans multiple BPE tokens
                 bpe_indices.append(j)
-                bpe_tok = bpe_tok[len(other_tok):]
-                other_tok = ''
+                bpe_tok = bpe_tok[len(other_tok) :]
+                other_tok = ""
             else:
                 raise Exception('Cannot align "{}" and "{}"'.format(other_tok, bpe_tok))
-            if other_tok == '':
+            if other_tok == "":
                 break
         assert len(bpe_indices) > 0
         alignment.append(bpe_indices)
@@ -69,7 +69,6 @@ def align_bpe_to_words(roberta, bpe_tokens: torch.LongTensor, other_tokens: List
 def align_features_to_words(roberta, features, alignment):
     """
     Align given features to words.
-
     Args:
         roberta (RobertaHubInterface): RoBERTa instance
         features (torch.Tensor): features to align of shape `(T_bpe x C)`
@@ -96,20 +95,21 @@ def align_features_to_words(roberta, features, alignment):
 
 
 def spacy_nlp():
-    if getattr(spacy_nlp, '_nlp', None) is None:
+    if getattr(spacy_nlp, "_nlp", None) is None:
         try:
             from spacy.lang.en import English
+
             spacy_nlp._nlp = English()
         except ImportError:
-            raise ImportError('Please install spacy with: pip install spacy')
+            raise ImportError("Please install spacy with: pip install spacy")
     return spacy_nlp._nlp
 
 
 def spacy_tokenizer():
-    if getattr(spacy_tokenizer, '_tokenizer', None) is None:
+    if getattr(spacy_tokenizer, "_tokenizer", None) is None:
         try:
             nlp = spacy_nlp()
             spacy_tokenizer._tokenizer = nlp.Defaults.create_tokenizer(nlp)
         except ImportError:
-            raise ImportError('Please install spacy with: pip install spacy')
+            raise ImportError("Please install spacy with: pip install spacy")
     return spacy_tokenizer._tokenizer
